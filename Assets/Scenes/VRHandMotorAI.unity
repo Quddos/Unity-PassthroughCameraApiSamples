@@ -222,6 +222,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 570996035}
+  - component: {fileID: 570996036}
   m_Layer: 0
   m_Name: Digit Recognition
   m_TagString: Untagged
@@ -244,6 +245,21 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &570996036
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 570996033}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e41ab13e1a48b374ab2a5f4756f9e52e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DigitRecognition
+  testPicture: {fileID: 2800000, guid: a1f9a9b87d063064f85c291fe2c7710a, type: 3}
+  modelAsset: {fileID: 5022602860645237092, guid: e6b8b3acc7f3162429d5631d303ac6f6, type: 3}
+  results: []
 --- !u!1 &656310425
 GameObject:
   m_ObjectHideFlags: 0
