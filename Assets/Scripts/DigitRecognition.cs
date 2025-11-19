@@ -3,43 +3,51 @@ using Unity.InferenceEngine;
 
 public class DigitRecognition : MonoBehaviour
 {
+    [Header("AI Model Inputs")]
     public Texture2D testPicture;
     public ModelAsset modelAsset;
-    public float[] results;
+
+    [Header("Capture From Board")]
+    public Camera captureCamera;
+    public RenderTexture renderTexture;
+
     private Worker worker;
+    private float[] results;
 
     void Start()
     {
-        // Load the AI model
+        // Load the ONNX model
         Model model = ModelLoader.Load(modelAsset);
-        FunctionalGraph graph = new FunctionalGraph();
-        FunctionalTensor[] inputs = graph.AddInputs(model);
-        FunctionalTensor[] outputs = Functional.Forward(model, inputs);
 
-        // Compile and prepare the model
+        FunctionalGraph graph = new FunctionalGraph();
+        var inputs = graph.AddInputs(model);
+        var outputs = Functional.Forward(model, inputs);
+
         Model runtimeModel = graph.Compile(outputs);
         worker = new Worker(runtimeModel, BackendType.GPUCompute);
 
-        // Run the AI model
-        int predicted = RunAI(testPicture);
-        Debug.Log("Predicted Digit: " + predicted);
+        // Optional: Test with default image
+        if (testPicture != null)
+        {
+            int predicted = RunAI(testPicture);
+            Debug.Log("Sample Test Prediction: " + predicted);
+        }
     }
 
+    // Runs AI model on any 28x28 texture
     public int RunAI(Texture2D picture)
     {
         using Tensor<float> inputTensor = TextureConverter.ToTensor(picture, 28, 28, 1);
         worker.Schedule(inputTensor);
 
-        // Get the model output (logits)
         Tensor<float> outputTensor = worker.PeekOutput() as Tensor<float>;
         results = outputTensor.DownloadToArray();
 
-        // Convert to probabilities using Softmax
         float[] probs = Softmax(results);
 
-        // Find the highest probability (predicted digit)
         int maxIndex = 0;
         float maxValue = probs[0];
+
         for (int i = 1; i < probs.Length; i++)
         {
             if (probs[i] > maxValue)
@@ -49,35 +57,58 @@ public class DigitRecognition : MonoBehaviour
             }
         }
 
-        Debug.Log("Softmax Probabilities: " + string.Join(", ", probs));
-        Debug.Log("Highest Probability: " + (maxValue * 100f).ToString("F2") + "%");
+        Debug.Log($"AI Prediction: {maxIndex} | Confidence: {(maxValue * 100f):F2}%");
 
         return maxIndex;
     }
 
-    // Softmax logic: turns results into probabilities that add up to 1
+    // Capture board → run AI
+    public int RunAIFromBoard()
+    {
+        if (captureCamera == null || renderTexture == null)
+        {
+            Debug.LogError("DigitRecognition: Capture camera or render texture is missing!");
+            return -1;
+        }
+
+        RenderTexture.active = renderTexture;
+
+        Texture2D tex = new Texture2D(28, 28, TextureFormat.RGB24, false);
+
+        captureCamera.targetTexture = renderTexture;
+        captureCamera.Render();
+
+        tex.ReadPixels(new Rect(0, 0, 28, 28), 0, 0);
+        tex.Apply();
+
+        captureCamera.targetTexture = null;
+        RenderTexture.active = null;
+
+        return RunAI(tex);
+    }
+
+    // Softmax function
     float[] Softmax(float[] logits)
     {
-        float maxLogit = Mathf.Max(logits);
-        float sumExp = 0f;
-        float[] expVals = new float[logits.Length];
+        float max = Mathf.Max(logits);
+        float sumExp = 0;
+        float[] exps = new float[logits.Length];
 
         for (int i = 0; i < logits.Length; i++)
         {
-            expVals[i] = Mathf.Exp(logits[i] - maxLogit);
-            sumExp += expVals[i];
+            exps[i] = Mathf.Exp(logits[i] - max);
+            sumExp += exps[i];
         }
 
         float[] probs = new float[logits.Length];
         for (int i = 0; i < logits.Length; i++)
-            probs[i] = expVals[i] / sumExp;
+            probs[i] = exps[i] / sumExp;
 
         return probs;
     }
 
     private void OnDisable()
     {
-        worker.Dispose();
-        // /jdkj
+        worker?.Dispose();
     }
 }
